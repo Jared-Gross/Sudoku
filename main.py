@@ -1,35 +1,86 @@
 import contextlib
 import itertools
 import sys
-
+from functools import partial
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QIcon, QImage, QPalette, QPixmap
 from PyQt5.QtWidgets import QMessageBox
-
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+from rich import print
 from sudoku import check_solution, generate_board
 
+import threading
 
+
+class Worker(QObject):
+    finished = pyqtSignal()
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def run(self):
+        check_solution()
+        self.finished.emit()
 class Window(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        top, left, width, height = 400, 400, 800, 800
+        top, left, width, height = 400, 400, 1500, 1500
         self.setFixedSize(width, height)
         self.setWindowTitle("Sudoku")
 
+        self.drawing = False
+        self.erase = False
+        self.brushSize = 10
+        self._clear_size = 20
+        self.brushColor = QtGui.QColor(QtCore.Qt.blue)
+        self.lastPoint = QtCore.QPoint()
+        self.pointer_type = 0
+        
         mainMenu = self.menuBar()
         sudoku = mainMenu.addMenu("Sudoku")
-        solveAction = QtWidgets.QAction("Solve", self)
-        solveAction.triggered.connect(self.solve)
+        self.solveAction = QtWidgets.QAction("Show Solution", self)
+        self.solveAction.triggered.connect(self.show_solution)
 
         generateAction = QtWidgets.QAction("New", self)
+        clearAction = QtWidgets.QAction("Clear", self)
         sudoku.addAction(generateAction)
-        sudoku.addAction(solveAction)
+        sudoku.addAction(clearAction)
+        sudoku.addAction(self.solveAction)
         generateAction.triggered.connect(self.generate)
+        clearAction.triggered.connect(self.clear)
         self.load_cell_positions()
         self.generate()
-
+        
+    def solve(self):
+        self.thread = QThread()
+        self.worker = Worker()
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(partial(self.worker.run))
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.finished.connect(self.found_solution)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.thread.start()
+        
+    def found_solution(self):
+        self.solveAction.setEnabled(True)
+        
+    def clear(self):
+        with contextlib.suppress(Exception):
+            self.painter.end()
+        self.image = QtGui.QImage("board.png")
+        self.imageDraw = QtGui.QImage(self.size(), QtGui.QImage.Format_ARGB32)
+        self.imageDraw.fill(QtCore.Qt.transparent)
+        self.painter = QtGui.QPainter(self.image)
+        self.painter.setFont(QFont("Calibri", 64))
+        self.load_board()
+        self.update()
+        
     def generate(self):
+        self.solveAction.setEnabled(False)
         with contextlib.suppress(Exception):
             self.painter.end()
         self.image = QtGui.QImage("board.png")
@@ -39,13 +90,11 @@ class Window(QtWidgets.QMainWindow):
         self.painter.setFont(QFont("Calibri", 64))
         generate_board()
         self.load_board()
-        self.drawing = False
-        self.erase = False
-        self.brushSize = 5
-        self._clear_size = 20
-        self.brushColor = QtGui.QColor(QtCore.Qt.black)
-        self.lastPoint = QtCore.QPoint()
         self.update()
+        pixmap = QPixmap(self.grab())
+        pixmap.save("screenshot.png")
+        self.solve()
+        # threading.Thread(target=check_solution).start()
 
     def load_cell_positions(self) -> None:
         self.cell_positions = []
@@ -63,6 +112,15 @@ class Window(QtWidgets.QMainWindow):
             number = line[col]
             if number == "0":
                 number = ""
+            self.painter.setPen(
+                QtGui.QPen(
+                    QtGui.QColor(QtCore.Qt.white),
+                    self.brushSize,
+                    QtCore.Qt.SolidLine,
+                    QtCore.Qt.RoundCap,
+                    QtCore.Qt.RoundJoin,
+                )
+            )
             self.painter.drawText(
                 self.cell_positions[row][col][0],
                 self.cell_positions[row][col][1],
@@ -72,25 +130,23 @@ class Window(QtWidgets.QMainWindow):
                 number,
             )
 
-    def solve(self) -> None:
-        pixmap = QPixmap(self.grab())
-        pixmap.save("screenshot.png")
-        if check_solution():
-            self.painter.end()
-            self.image = QtGui.QImage("solution.png")
-            self.painter = QtGui.QPainter(self.image)
-            self.update()
-            QMessageBox.about(self, "Found", "Solution found")
-        else:
-            QMessageBox.about(self, "Wrong", "No solution")
+    def show_solution(self) -> None:
+        # if check_solution():
+        self.painter.end()
+        self.image = QtGui.QImage("solution.png")
+        self.painter = QtGui.QPainter(self.image)
+        self.update()
+            # QMessageBox.about(self, "Found", "Solution found")
+        # else:
+            # QMessageBox.about(self, "Wrong", "No solution")
 
     def mousePressEvent(self, event):
-        if event.button() == QtCore.Qt.LeftButton:
+        if self.pointer_type == 1:
             self.drawing = True
             self.erase = False
             self.lastPoint = event.pos()
             QtWidgets.QApplication.restoreOverrideCursor()
-        else:
+        elif self.pointer_type == 3:
             self.erase = True
             pixmap = QtGui.QPixmap(QtCore.QSize(1, 1) * self._clear_size)
             pixmap.fill(QtCore.Qt.transparent)
@@ -101,6 +157,10 @@ class Window(QtWidgets.QMainWindow):
             cursor = QtGui.QCursor(pixmap)
             QtWidgets.QApplication.setOverrideCursor(cursor)
 
+    def tabletEvent(self, tabletEvent):
+        self.pointer_type = tabletEvent.pointerType()
+        tabletEvent.accept()
+        
     def mouseMoveEvent(self, event):
         if event.buttons() and QtCore.Qt.LeftButton and self.drawing:
             self.painter = QtGui.QPainter(self.imageDraw)

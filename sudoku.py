@@ -1,21 +1,23 @@
-# ==========import the necessary packages============
 import itertools
-import math
 
 import cv2
 import imutils
 import numpy as np
 import pytesseract
-from PIL import Image
 from skimage.filters import threshold_local
 
 
-# =============== For Transformation ==============
 def order_points(pts):
-    """initialzie a list of coordinates that will be ordered
-    such that the first entry in the list is the top-left,
-    the second entry is the top-right, the third is the
-    bottom-right, and the fourth is the bottom-left"""
+    """
+    It takes in a list of four points, and returns a list of four points where the points are ordered in
+    a clockwise fashion
+    
+    Args:
+      pts: The input array of (x, y) coordinates.
+    
+    Returns:
+      The ordered coordinates of the rectangle.
+    """
 
     rect = np.zeros((4, 2), dtype="float32")
 
@@ -37,6 +39,17 @@ def order_points(pts):
 
 
 def four_point_transform(image, pts):
+    """
+    The function takes an image and a set of four points, applies a perspective transform to the image,
+    and returns the transformed image
+    
+    Args:
+      image: The image we want to transform.
+      pts: The points that we want to transform.
+    
+    Returns:
+      The warped image
+    """
     # obtain a consistent order of the points and unpack them
     # individually
     rect = order_points(pts)
@@ -72,8 +85,14 @@ def four_point_transform(image, pts):
     return cv2.warpPerspective(image, M, (maxWidth, maxHeight))
 
 
-############## To show image ##############
 def show_image(img, title):
+    """
+    It shows an image and waits for a key press
+    
+    Args:
+      img: The image to be displayed
+      title: The title of the window
+    """
     cv2.imshow(title, img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
@@ -81,8 +100,16 @@ def show_image(img, title):
 
 def find_largest_feature(inp_img, scan_tl=None, scan_br=None):
     """
-    Uses the fact the `floodFill` function returns a bounding box of the area it filled to find the biggest
-    connected pixel structure in the image. Fills this structure in white, reducing the rest to black.
+    It finds the largest connected white area in the image, and then fills it in white, and everything
+    else in black
+    
+    Args:
+      inp_img: The image to be scanned
+      scan_tl: The top left corner of the area to scan in search of the grid.
+      scan_br: The bottom right corner of the area to scan for the grid.
+    
+    Returns:
+      The largest feature in the image.
     """
     img = inp_img.copy()  # Copy the image, leaving the original untouched
     height, width = img.shape[:2]
@@ -132,8 +159,17 @@ def find_largest_feature(inp_img, scan_tl=None, scan_br=None):
     return img
 
 
-################# Preprocessing of sudoku image ###############
 def preprocess(image, case):
+    """
+    It takes an image, resizes it, and then applies a perspective transform to it
+    
+    Args:
+      image: The image to be preprocessed
+      case: True if the image is a scanned image, False if it's a photo
+    
+    Returns:
+      The preprocess function returns the following:
+    """
     ratio = image.shape[0] / 500.0
     orig = image.copy()
     image = imutils.resize(image, height=500)
@@ -212,6 +248,16 @@ def preprocess(image, case):
 
 
 def grids(img, warped2):
+    """
+    It draws a grid on the image
+    
+    Args:
+      img: The image to be processed
+      warped2: The image that we want to draw the grid on.
+    
+    Returns:
+      the image with the grid lines drawn on it.
+    """
     # print("im:",img.shape)
     img2 = img.copy()
     img = np.zeros((500, 500, 3), np.uint8)
@@ -264,8 +310,19 @@ def grids(img, warped2):
     return img
 
 
-############### Finding out the intersection pts to get the grids #########
 def grid_points(img, warped2):
+    """
+    It takes an image and a warped image as input, and returns the centroids of the grid points, the
+    grid points in a 10x10 matrix, and the contours of the grid points
+    
+    Args:
+      img: The original image
+      warped2: The image that has been warped to a top-down view.
+    
+    Returns:
+      the centroids of the grid points, the grid points in a 10x10 matrix, and the contours of the grid
+    points.
+    """
     img1 = img.copy()
     kernelx = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 10))
 
@@ -323,11 +380,20 @@ def grid_points(img, warped2):
     return c2, bm, cnts
 
 
-############ Recognize digit images to number #############
 def image_to_num(c2):
+    """
+    It takes an image of a single digit, inverts it, and then uses the Tesseract OCR engine to convert
+    it to a number
+    
+    Args:
+      c2: the image
+    
+    Returns:
+      A list of the first character of the text.
+    """
     img = 255 - c2
     pytesseract.pytesseract.tesseract_cmd = (
-        r"C:/Program Files/Tesseract-OCR/tesseract.exe"
+        r"C:/Program Files (x86)/Tesseract-OCR/tesseract.exe"
     )
     text = pytesseract.image_to_string(
         img, lang="eng", config="--psm 6 --oem 3"
@@ -335,8 +401,19 @@ def image_to_num(c2):
     return list(text)[0]
 
 
-###### To get the digit at the particular cell #############
 def get_digit(c2, bm, warped1, cnts):
+    """
+    It takes an image, finds the largest feature, and then returns the image with the largest feature
+    
+    Args:
+      c2: the image
+      bm: the list of coordinates of the boxes
+      warped1: The image that we want to extract the digits from
+      cnts: the contours of the image
+    
+    Returns:
+      the following:
+    """
     num = []
     centroidx = np.empty((9, 9))
     centroidy = np.empty((9, 9))
@@ -405,8 +482,16 @@ def get_digit(c2, bm, warped1, cnts):
     return c2, num, centroidx, centroidy
 
 
-######## creating matrix and filling numbers exist in the orig image #######
 def sudoku_matrix(num):
+    """
+    It takes a string of 81 digits and returns a 9x9 matrix
+    
+    Args:
+      num: a string of 81 digits, representing the sudoku puzzle
+    
+    Returns:
+      A 9x9 matrix of the sudoku puzzle
+    """
     grid = np.empty((9, 9))
     for c, (i, j) in enumerate(itertools.product(range(9), range(9))):
         grid[i][j] = int(num[c])
@@ -415,36 +500,49 @@ def sudoku_matrix(num):
     return grid
 
 
-######## Creating board to show the puzzle result in terminal##############
-def board(arr):
-    for i in range(9):
-
-        if i % 3 == 0:
-            print("+", end="")
-            print("-------+" * 3)
-
-        for j in range(9):
-            if j % 3 == 0:
-                print("", end="| ")
-            print(int(arr[i][j]), end=" ")
-
-        print("", end="|")
-        print()
-
-    print("+", end="")
-    print("-------+" * 3)
-    return arr
-
-
-def check_col(arr, num, col):
+def check_col(arr, num, col) -> bool:
+    """
+    It returns True if the number is not in the column, and False otherwise
+    
+    Args:
+      arr: The array of the sudoku board
+      num: the number we're checking
+      col: the column number
+    
+    Returns:
+      A boolean value.
+    """
     return all(num != arr[i][col] for i in range(9))
 
 
-def check_row(arr, num, row):
+def check_row(arr, num, row) -> bool:
+    """
+    It returns True if the number is not in the row, and False otherwise
+    
+    Args:
+      arr: The array of the sudoku board
+      num: the number we're checking
+      row: the row number
+    
+    Returns:
+      True or False
+    """
     return all(num != arr[row][i] for i in range(9))
 
 
-def check_cell(arr, num, row, col):
+def check_cell(arr, num, row, col) -> bool:
+    """
+    It checks if the number is already in the 3x3 section of the board
+    
+    Args:
+      arr: The array of the sudoku board
+      num: the number we're checking
+      row: the row of the cell we're checking
+      col: the column of the cell we're checking
+    
+    Returns:
+      A boolean value.
+    """
     sectopx = 3 * (row // 3)
     sectopy = 3 * (col // 3)
 
@@ -456,7 +554,18 @@ def check_cell(arr, num, row, col):
     )
 
 
-def empty_loc(arr, l):
+def empty_loc(arr, l) -> bool:
+    """
+    It takes a 2D array and a list as input and returns True if the 2D array has an empty location, and
+    if so, it fills the list with the row and column of the empty location
+    
+    Args:
+      arr: The sudoku board
+      l: a list of length 2, which will be used to store the row and column of the empty cell
+    
+    Returns:
+      a boolean value.
+    """
     for i, j in itertools.product(range(9), range(9)):
         if arr[i][j] == 0:
             l[0] = i
@@ -465,8 +574,17 @@ def empty_loc(arr, l):
     return False
 
 
-#### Solving sudoku by back tracking############
-def sudoku(arr):
+def sudoku(arr) -> bool:
+    """
+    If there is an empty location, try all numbers from 1 to 9 in that location and recursively call the
+    function. If it returns True, return True. If it returns False, undo the number and try again
+    
+    Args:
+      arr: The sudoku board
+    
+    Returns:
+      a boolean value.
+    """
     l = [0, 0]
 
     if not empty_loc(arr, l):
@@ -493,6 +611,18 @@ def sudoku(arr):
 
 
 def overlay(arr, num, img, cx, cy):
+    """
+    It takes the solved sudoku array, the array of numbers that are not to be written, the image of the
+    sudoku, and the x and y coordinates of the center of each box, and writes the numbers in the solved
+    sudoku array on the image of the sudoku
+    
+    Args:
+      arr: The solved sudoku array
+      num: This is the array that contains the numbers that are already present in the sudoku.
+      img: The image of the sudoku puzzle
+      cx: x-coordinates of the centers of the 81 cells
+      cy: The y-coordinates of the centers of the 81 cells.
+    """
     for no, (i, j) in enumerate(itertools.product(range(9), range(9))):
         # cv2.putText(img,str(no), (int(cx[i][j]),int(cy[i][j])),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
         if num[no] == 0:
@@ -500,18 +630,22 @@ def overlay(arr, num, img, cx, cy):
             cv2.putText(
                 img,
                 str(int(arr[j][i])),
-                (int(cx[i][j] - 4), int(cy[i][j]) + 8),
+                (int(cx[i][j])+12, int(cy[i][j])+28),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1,
-                (0, 255, 0),
-                4,
+                (255, 0, 255),
+                1,
             )
+    img = cv2.bitwise_not(img)
     cv2.imwrite("solution.png", img)
     # cv2.imshow("Sudoku", img)
     # cv2.waitKey(0)
 
 
 def generate_board():
+    """
+    It generates a random sudoku board and writes it to a file
+    """
     base = 3
     side = base * base
 
@@ -534,11 +668,10 @@ def generate_board():
     board = [[nums[pattern(r, c)] for c in cols] for r in rows]
 
     squares = side * side
-    empties = squares * 3 // 4
+    empties = squares * 3 // 6
     for p in sample(range(squares), empties):
         board[p // side][p % side] = 0
 
-    numSize = len(str(side))
     with open("board.txt", "w") as f:
         f.write("")
     for i, line in enumerate(board):
@@ -550,8 +683,16 @@ def generate_board():
 
 
 def check_solution() -> bool:
+    """
+    It takes a screenshot of the sudoku board, preprocesses it, finds the grid points, finds the digits,
+    creates a sudoku matrix, solves the sudoku, and then overlays the solution on the original image
+    
+    Returns:
+      a boolean value.
+    """
     case = "False"  # If transformation is required set True
     image = cv2.imread("screenshot.png")
+    image = cv2.bitwise_not(image)
 
     th3, warped1, warped = preprocess(image, case)
     warped2 = warped1.copy()
@@ -560,8 +701,7 @@ def check_solution() -> bool:
     c2, num, cx, cy = get_digit(c2, bm, warped1, cnts)
     grid = sudoku_matrix(num)
     if sudoku(grid):
-        arr = board(grid)
-        overlay(arr, num, warped1, cx, cy)
+        overlay(grid, num, warped1, cx, cy)
         return True
     else:
         return False
