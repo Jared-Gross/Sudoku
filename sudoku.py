@@ -1,10 +1,18 @@
 import itertools
+from random import sample
 
 import cv2
 import imutils
 import numpy as np
 import pytesseract
+from rich import print
 from skimage.filters import threshold_local
+
+
+class Difficulties:
+    easy: int = 8
+    normal: int = 6
+    hard: int = 3
 
 
 def order_points(pts):
@@ -374,8 +382,9 @@ def image_to_num(c2):
     """
     img = 255 - c2
     pytesseract.pytesseract.tesseract_cmd = (
-        r"C:/Program Files (x86)/Tesseract-OCR/tesseract.exe"
+        r"C:/Program Files/Tesseract-OCR/tesseract.exe"
     )
+
     text = pytesseract.image_to_string(
         img, lang="eng", config="--psm 6 --oem 3"
     )  # builder=builder)
@@ -475,7 +484,11 @@ def sudoku_matrix(num):
     """
     grid = np.empty((9, 9))
     for c, (i, j) in enumerate(itertools.product(range(9), range(9))):
-        grid[i][j] = int(num[c])
+        try:
+            grid[i][j] = int(num[c])
+        except ValueError:
+            if num[c] == "?":
+                grid[i][j] = 2
 
     grid = np.transpose(grid)
     return grid
@@ -624,7 +637,7 @@ def overlay(arr, num, img, cx, cy, output_filename):
     # cv2.waitKey(0)
 
 
-def generate_board():
+def generate_board(difficulty: int) -> None:
     """
     It generates a random sudoku board and writes it to a file
     """
@@ -634,9 +647,6 @@ def generate_board():
     # pattern for a baseline valid solution
     def pattern(r, c):
         return (base * (r % base) + r // base + c) % side
-
-    # randomize rows, columns and numbers (of valid base pattern)
-    from random import sample
 
     def shuffle(s):
         return sample(s, len(s))
@@ -650,7 +660,7 @@ def generate_board():
     board = [[nums[pattern(r, c)] for c in cols] for r in rows]
 
     squares = side * side
-    empties = squares * 3 // 6
+    empties = squares * 3 // difficulty
     for p in sample(range(squares), empties):
         board[p // side][p % side] = 0
 
@@ -662,6 +672,17 @@ def generate_board():
             f.writelines(line)
             if i != len(board) - 1:
                 f.write("\n")
+
+
+def get_digit_from_file() -> list:
+    num = []
+    with open("board.txt", "r") as f:
+        lines = f.readlines()
+    num.extend(
+        int(lines[j][i].replace("\n", ""))
+        for i, j in itertools.product(range(9), range(9))
+    )
+    return num
 
 
 def check_solution(output_filename) -> bool:
