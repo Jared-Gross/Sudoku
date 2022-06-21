@@ -11,10 +11,10 @@ def order_points(pts):
     """
     It takes in a list of four points, and returns a list of four points where the points are ordered in
     a clockwise fashion
-    
+
     Args:
       pts: The input array of (x, y) coordinates.
-    
+
     Returns:
       The ordered coordinates of the rectangle.
     """
@@ -42,11 +42,11 @@ def four_point_transform(image, pts):
     """
     The function takes an image and a set of four points, applies a perspective transform to the image,
     and returns the transformed image
-    
+
     Args:
       image: The image we want to transform.
       pts: The points that we want to transform.
-    
+
     Returns:
       The warped image
     """
@@ -88,7 +88,7 @@ def four_point_transform(image, pts):
 def show_image(img, title):
     """
     It shows an image and waits for a key press
-    
+
     Args:
       img: The image to be displayed
       title: The title of the window
@@ -102,12 +102,12 @@ def find_largest_feature(inp_img, scan_tl=None, scan_br=None):
     """
     It finds the largest connected white area in the image, and then fills it in white, and everything
     else in black
-    
+
     Args:
       inp_img: The image to be scanned
       scan_tl: The top left corner of the area to scan in search of the grid.
       scan_br: The bottom right corner of the area to scan for the grid.
-    
+
     Returns:
       The largest feature in the image.
     """
@@ -162,11 +162,11 @@ def find_largest_feature(inp_img, scan_tl=None, scan_br=None):
 def preprocess(image, case):
     """
     It takes an image, resizes it, and then applies a perspective transform to it
-    
+
     Args:
       image: The image to be preprocessed
       case: True if the image is a scanned image, False if it's a photo
-    
+
     Returns:
       The preprocess function returns the following:
     """
@@ -237,11 +237,11 @@ def preprocess(image, case):
 def grids(img, warped2):
     """
     It draws a grid on the image
-    
+
     Args:
       img: The image to be processed
       warped2: The image that we want to draw the grid on.
-    
+
     Returns:
       the image with the grid lines drawn on it.
     """
@@ -295,11 +295,11 @@ def grid_points(img, warped2):
     """
     It takes an image and a warped image as input, and returns the centroids of the grid points, the
     grid points in a 10x10 matrix, and the contours of the grid points
-    
+
     Args:
       img: The original image
       warped2: The image that has been warped to a top-down view.
-    
+
     Returns:
       the centroids of the grid points, the grid points in a 10x10 matrix, and the contours of the grid
     points.
@@ -365,10 +365,10 @@ def image_to_num(c2):
     """
     It takes an image of a single digit, inverts it, and then uses the Tesseract OCR engine to convert
     it to a number
-    
+
     Args:
       c2: the image
-    
+
     Returns:
       A list of the first character of the text.
     """
@@ -385,13 +385,13 @@ def image_to_num(c2):
 def get_digit(c2, bm, warped1, cnts):
     """
     It takes an image, finds the largest feature, and then returns the image with the largest feature
-    
+
     Args:
       c2: the image
       bm: the list of coordinates of the boxes
       warped1: The image that we want to extract the digits from
       cnts: the contours of the image
-    
+
     Returns:
       the following:
     """
@@ -466,10 +466,10 @@ def get_digit(c2, bm, warped1, cnts):
 def sudoku_matrix(num):
     """
     It takes a string of 81 digits and returns a 9x9 matrix
-    
+
     Args:
       num: a string of 81 digits, representing the sudoku puzzle
-    
+
     Returns:
       A 9x9 matrix of the sudoku puzzle
     """
@@ -484,12 +484,12 @@ def sudoku_matrix(num):
 def check_col(arr, num, col) -> bool:
     """
     It returns True if the number is not in the column, and False otherwise
-    
+
     Args:
       arr: The array of the sudoku board
       num: the number we're checking
       col: the column number
-    
+
     Returns:
       A boolean value.
     """
@@ -499,12 +499,12 @@ def check_col(arr, num, col) -> bool:
 def check_row(arr, num, row) -> bool:
     """
     It returns True if the number is not in the row, and False otherwise
-    
+
     Args:
       arr: The array of the sudoku board
       num: the number we're checking
       row: the row number
-    
+
     Returns:
       True or False
     """
@@ -514,13 +514,13 @@ def check_row(arr, num, row) -> bool:
 def check_cell(arr, num, row, col) -> bool:
     """
     It checks if the number is already in the 3x3 section of the board
-    
+
     Args:
       arr: The array of the sudoku board
       num: the number we're checking
       row: the row of the cell we're checking
       col: the column of the cell we're checking
-    
+
     Returns:
       A boolean value.
     """
@@ -539,11 +539,11 @@ def empty_loc(arr, l) -> bool:
     """
     It takes a 2D array and a list as input and returns True if the 2D array has an empty location, and
     if so, it fills the list with the row and column of the empty location
-    
+
     Args:
       arr: The sudoku board
       l: a list of length 2, which will be used to store the row and column of the empty cell
-    
+
     Returns:
       a boolean value.
     """
@@ -559,10 +559,10 @@ def sudoku(arr) -> bool:
     """
     If there is an empty location, try all numbers from 1 to 9 in that location and recursively call the
     function. If it returns True, return True. If it returns False, undo the number and try again
-    
+
     Args:
       arr: The sudoku board
-    
+
     Returns:
       a boolean value.
     """
@@ -596,7 +596,7 @@ def overlay(arr, num, img, cx, cy, output_filename):
     It takes the solved sudoku array, the array of numbers that are not to be written, the image of the
     sudoku, and the x and y coordinates of the center of each box, and writes the numbers in the solved
     sudoku array on the image of the sudoku
-    
+
     Args:
       arr: The solved sudoku array
       num: This is the array that contains the numbers that are already present in the sudoku.
@@ -610,12 +610,12 @@ def overlay(arr, num, img, cx, cy, output_filename):
             cv2.putText(
                 img,
                 str(int(arr[j][i])),
-                (int(cx[i][j])+30, int(cy[i][j])+90-(j*3)),
+                (int(cx[i][j]) + 30, int(cy[i][j]) + 90 - (j * 3)),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 2,
                 (255, 0, 255),
                 1,
-                cv2.LINE_AA
+                cv2.LINE_AA,
             )
     img = cv2.bitwise_not(img)
     # img = cv2.copyMakeBorder(img, 35, 0, 0, 0, cv2.BORDER_CONSTANT)
@@ -668,7 +668,7 @@ def check_solution(output_filename) -> bool:
     """
     It takes a screenshot of the sudoku board, preprocesses it, finds the grid points, finds the digits,
     creates a sudoku matrix, solves the sudoku, and then overlays the solution on the original image
-    
+
     Returns:
       a boolean value.
     """
