@@ -2,7 +2,7 @@
 
 Sudoku that is designed to be played on tablet such as Surface Pro. Performance is really good, on idle its 0%, when looking for solution to sudoku puzzle it goes up to 6% at most. Ram usage is around 100mb. Its just what you need for a table board game. 
 
-![image](https://user-images.githubusercontent.com/25397800/174685230-415a1a11-b04c-411b-8a5b-3e7dbd5a6535.png)
+![image](https://user-images.githubusercontent.com/25397800/174698150-6be61833-423a-4ef3-b901-9b3103d9fc19.png)
 
 ## Requirements
 
