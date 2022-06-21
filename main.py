@@ -10,55 +10,53 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from rich import print
+from PyQt5 import uic
 from sudoku import check_solution, generate_board
 
-import threading
 
 
 class Worker(QObject):
     finished = pyqtSignal()
 
-    def __init__(self) -> None:
+    def __init__(self, output_filename) -> None:
         super().__init__()
+        self.output_filename = output_filename
 
-    def run(self):
-        check_solution()
+    def run(self, output_filename):
+        check_solution(output_filename)
         self.finished.emit()
+        
 class Window(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        top, left, width, height = 400, 400, 1500, 1500
+        uic.loadUi('main.ui', self)
+        width, height = 1500, 1520
         self.setFixedSize(width, height)
         self.setWindowTitle("Sudoku")
 
         self.drawing = False
         self.erase = False
+        self.show_solution = False
         self.brushSize = 10
-        self._clear_size = 20
+        self._clear_size = 40
         self.brushColor = QtGui.QColor(QtCore.Qt.blue)
         self.lastPoint = QtCore.QPoint()
+        self.painter = QtGui.QPainter()
         self.pointer_type = 0
+        self.pen_pressure: float = 0.0
         
-        mainMenu = self.menuBar()
-        sudoku = mainMenu.addMenu("Sudoku")
-        self.solveAction = QtWidgets.QAction("Show Solution", self)
-        self.solveAction.triggered.connect(self.show_solution)
+        self.generateAction.triggered.connect(self.generate)
+        self.clearAction.triggered.connect(self.clear)
+        self.toggleSolutionAction.triggered.connect(self.toggle_solution)
 
-        generateAction = QtWidgets.QAction("New", self)
-        clearAction = QtWidgets.QAction("Clear", self)
-        sudoku.addAction(generateAction)
-        sudoku.addAction(clearAction)
-        sudoku.addAction(self.solveAction)
-        generateAction.triggered.connect(self.generate)
-        clearAction.triggered.connect(self.clear)
         self.load_cell_positions()
         self.generate()
         
-    def solve(self):
+    def solve(self, output_filename: str):
         self.thread = QThread()
-        self.worker = Worker()
+        self.worker = Worker(output_filename=output_filename)
         self.worker.moveToThread(self.thread)
-        self.thread.started.connect(partial(self.worker.run))
+        self.thread.started.connect(partial(self.worker.run, output_filename))
         self.worker.finished.connect(self.thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
         self.worker.finished.connect(self.found_solution)
@@ -66,7 +64,7 @@ class Window(QtWidgets.QMainWindow):
         self.thread.start()
         
     def found_solution(self):
-        self.solveAction.setEnabled(True)
+        self.toggleSolutionAction.setEnabled(True)
         
     def clear(self):
         with contextlib.suppress(Exception):
@@ -80,7 +78,7 @@ class Window(QtWidgets.QMainWindow):
         self.update()
         
     def generate(self):
-        self.solveAction.setEnabled(False)
+        self.toggleSolutionAction.setEnabled(False)
         with contextlib.suppress(Exception):
             self.painter.end()
         self.image = QtGui.QImage("board.png")
@@ -91,17 +89,15 @@ class Window(QtWidgets.QMainWindow):
         generate_board()
         self.load_board()
         self.update()
-        pixmap = QPixmap(self.grab())
-        pixmap.save("screenshot.png")
-        self.solve()
-        # threading.Thread(target=check_solution).start()
+        self.image.save('screenshot.png', 'png')
+        self.solve(output_filename='solution.png')
 
     def load_cell_positions(self) -> None:
         self.cell_positions = []
         for row in range(9):
             self.cell_positions.append([])
             for col in range(9):
-                self.cell_positions[row].append((111 * (col), 111 * (row)))
+                self.cell_positions[row].append((111 * (col), 111 * (row)+20))
 
     def load_board(self) -> None:
         with open("board.txt", "r") as f:
@@ -112,6 +108,9 @@ class Window(QtWidgets.QMainWindow):
             number = line[col]
             if number == "0":
                 number = ""
+            self.painter.setRenderHint(QPainter.TextAntialiasing, True)
+            self.painter.setRenderHint(QPainter.HighQualityAntialiasing, True)
+            self.painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
             self.painter.setPen(
                 QtGui.QPen(
                     QtGui.QColor(QtCore.Qt.white),
@@ -129,12 +128,20 @@ class Window(QtWidgets.QMainWindow):
                 Qt.AlignCenter,
                 number,
             )
-
-    def show_solution(self) -> None:
-        # if check_solution():
+    
+    def toggle_solution(self) -> None:
+        self.show_solution = not self.show_solution
         self.painter.end()
-        self.image = QtGui.QImage("solution.png")
-        self.painter = QtGui.QPainter(self.image)
+        if self.show_solution:
+            self.toggleSolutionAction.setText("Hide Solution")
+            self.image = QtGui.QImage("solution.png")
+            self.painter = QtGui.QPainter(self.image)
+        else:
+            self.toggleSolutionAction.setText("Show Solution")
+            self.image = QtGui.QImage("board.png")
+            self.painter = QtGui.QPainter(self.image)
+            self.painter.setFont(QFont("Calibri", 64))
+            self.load_board()
         self.update()
             # QMessageBox.about(self, "Found", "Solution found")
         # else:
@@ -151,7 +158,7 @@ class Window(QtWidgets.QMainWindow):
             pixmap = QtGui.QPixmap(QtCore.QSize(1, 1) * self._clear_size)
             pixmap.fill(QtCore.Qt.transparent)
             self.painter = QtGui.QPainter(pixmap)
-            self.painter.setPen(QtGui.QPen(QtCore.Qt.black, 2))
+            self.painter.setPen(QtGui.QPen(QtCore.Qt.white, 2))
             self.painter.drawRect(pixmap.rect())
             self.painter.end()
             cursor = QtGui.QCursor(pixmap)
@@ -159,6 +166,7 @@ class Window(QtWidgets.QMainWindow):
 
     def tabletEvent(self, tabletEvent):
         self.pointer_type = tabletEvent.pointerType()
+        self.pen_pressure = tabletEvent.pressure()
         tabletEvent.accept()
         
     def mouseMoveEvent(self, event):
@@ -167,7 +175,7 @@ class Window(QtWidgets.QMainWindow):
             self.painter.setPen(
                 QtGui.QPen(
                     self.brushColor,
-                    self.brushSize,
+                    self.brushSize*self.pen_pressure,
                     QtCore.Qt.SolidLine,
                     QtCore.Qt.RoundCap,
                     QtCore.Qt.RoundJoin,

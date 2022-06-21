@@ -1,0 +1,1 @@
+C:\Users\jared\Documents\Code\Sudoku\venv\Scripts\python.exe C:\Users\jared\Documents\Code\Sudoku\main.py %*

@@ -172,19 +172,17 @@ def preprocess(image, case):
     """
     ratio = image.shape[0] / 500.0
     orig = image.copy()
-    image = imutils.resize(image, height=500)
+    # image = imutils.resize(image, height=500)
 
     if case == True:
 
         gray = cv2.GaussianBlur(image, (5, 5), 0)
         gray = cv2.cvtColor(gray, cv2.COLOR_BGR2GRAY)
-        mask = np.zeros((gray.shape), np.uint8)
         kernel1 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
 
         close = cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel1)
         div = np.float32(gray) / (close)
         res = np.uint8(cv2.normalize(div, div, 0, 255, cv2.NORM_MINMAX))
-        res2 = cv2.cvtColor(res, cv2.COLOR_GRAY2BGR)
         edged = cv2.Canny(res, 75, 200)
 
         cnts = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -195,7 +193,6 @@ def preprocess(image, case):
         for c in cnts:
             # approximate the contour
             rect = cv2.boundingRect(c)
-            area = cv2.contourArea(c)
 
             cv2.rectangle(
                 edged.copy(),
@@ -221,26 +218,16 @@ def preprocess(image, case):
         # apply the four point transform to obtain a top-down
         # view of the original image
         warped = four_point_transform(orig, screenCnt.reshape(4, 2) * ratio)
-        warped1 = cv2.resize(warped, (610, 610))
-        warp = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-        T = threshold_local(warp, 11, offset=10, method="gaussian")
-        warp = (warp > T).astype("uint8") * 255
-        th3 = cv2.adaptiveThreshold(
-            warp, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2
-        )
-        kernel = np.ones((5, 5), np.uint8)
-        dilation = cv2.GaussianBlur(th3, (5, 5), 0)
-
     else:
 
         warped = image
-        warped1 = cv2.resize(warped, (610, 610))
-        warp = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-        T = threshold_local(warp, 11, offset=10, method="gaussian")
-        warp = (warp > T).astype("uint8") * 255
-        th3 = cv2.adaptiveThreshold(
-            warp, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2
-        )
+    warped1 = cv2.resize(warped, (1500, 1520))
+    warp = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
+    T = threshold_local(warp, 11, offset=10, method="gaussian")
+    warp = (warp > T).astype("uint8") * 255
+    th3 = cv2.adaptiveThreshold(
+        warp, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2
+    )
 
     # show_image(warped1,"preprocessed")
 
@@ -258,17 +245,11 @@ def grids(img, warped2):
     Returns:
       the image with the grid lines drawn on it.
     """
-    # print("im:",img.shape)
-    img2 = img.copy()
     img = np.zeros((500, 500, 3), np.uint8)
-
-    ratio2 = 3
-    kernel_size = 3
-    lowThreshold = 30
 
     frame = img
 
-    img = cv2.resize(frame, (610, 610))
+    img = cv2.resize(frame, (1500, 1520))
 
     for i in range(10):
         cv2.line(
@@ -343,7 +324,7 @@ def grid_points(img, warped2):
 
     res = cv2.bitwise_and(closex, closey)
     # gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(res, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    _, thresh = cv2.threshold(res, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
     kernel = np.ones((6, 6), np.uint8)
 
@@ -610,7 +591,7 @@ def sudoku(arr) -> bool:
     return False
 
 
-def overlay(arr, num, img, cx, cy):
+def overlay(arr, num, img, cx, cy, output_filename):
     """
     It takes the solved sudoku array, the array of numbers that are not to be written, the image of the
     sudoku, and the x and y coordinates of the center of each box, and writes the numbers in the solved
@@ -624,20 +605,21 @@ def overlay(arr, num, img, cx, cy):
       cy: The y-coordinates of the centers of the 81 cells.
     """
     for no, (i, j) in enumerate(itertools.product(range(9), range(9))):
-        # cv2.putText(img,str(no), (int(cx[i][j]),int(cy[i][j])),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
         if num[no] == 0:
 
             cv2.putText(
                 img,
                 str(int(arr[j][i])),
-                (int(cx[i][j])+12, int(cy[i][j])+28),
+                (int(cx[i][j])+30, int(cy[i][j])+90-(j*3)),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                1,
+                2,
                 (255, 0, 255),
                 1,
+                cv2.LINE_AA
             )
     img = cv2.bitwise_not(img)
-    cv2.imwrite("solution.png", img)
+    # img = cv2.copyMakeBorder(img, 35, 0, 0, 0, cv2.BORDER_CONSTANT)
+    cv2.imwrite(output_filename, img)
     # cv2.imshow("Sudoku", img)
     # cv2.waitKey(0)
 
@@ -682,7 +664,7 @@ def generate_board():
                 f.write("\n")
 
 
-def check_solution() -> bool:
+def check_solution(output_filename) -> bool:
     """
     It takes a screenshot of the sudoku board, preprocesses it, finds the grid points, finds the digits,
     creates a sudoku matrix, solves the sudoku, and then overlays the solution on the original image
@@ -694,14 +676,14 @@ def check_solution() -> bool:
     image = cv2.imread("screenshot.png")
     image = cv2.bitwise_not(image)
 
-    th3, warped1, warped = preprocess(image, case)
+    _, warped1, warped = preprocess(image, case)
     warped2 = warped1.copy()
     img = grids(warped, warped2)
     c2, bm, cnts = grid_points(img, warped2)
     c2, num, cx, cy = get_digit(c2, bm, warped1, cnts)
     grid = sudoku_matrix(num)
     if sudoku(grid):
-        overlay(grid, num, warped1, cx, cy)
+        overlay(grid, num, warped1, cx, cy, output_filename)
         return True
     else:
         return False
