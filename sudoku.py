@@ -8,11 +8,29 @@ import pytesseract
 from rich import print
 from skimage.filters import threshold_local
 
+from PIL import Image
+from PyQt5.QtGui import QColor
+
 
 class Difficulties:
     easy: int = 8
     normal: int = 6
-    hard: int = 3
+    hard: int = 4
+
+
+class NumberColors:
+    number_colors = [
+        QColor(128, 0, 128),
+        QColor(255, 0, 0),
+        QColor(255, 255, 0),
+        QColor(0, 255, 0),
+        QColor(0, 255, 255),
+        QColor(0, 0, 255),
+        QColor(128, 0, 0),
+        QColor(255, 0, 255),
+        QColor(0, 128, 0),
+        QColor(0, 0, 128),
+    ]
 
 
 def order_points(pts):
@@ -631,8 +649,10 @@ def overlay(arr, num, img, cx, cy, output_filename):
                 cv2.LINE_AA,
             )
     img = cv2.bitwise_not(img)
-    # img = cv2.copyMakeBorder(img, 35, 0, 0, 0, cv2.BORDER_CONSTANT)
     cv2.imwrite(output_filename, img)
+    # Load the image and convert to 32-bit RGBA
+    im = Image.open(output_filename).convert("RGBA")
+    im.save(output_filename)
     # cv2.imshow("Sudoku", img)
     # cv2.waitKey(0)
 

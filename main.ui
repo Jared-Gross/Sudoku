@@ -45,6 +45,8 @@
     <addaction name="clearAction"/>
     <addaction name="menuDifficulties"/>
     <addaction name="separator"/>
+    <addaction name="actionColor_Numbers"/>
+    <addaction name="separator"/>
     <addaction name="toggleSolutionAction"/>
    </widget>
    <addaction name="menuSudoku"/>
@@ -97,6 +99,17 @@
    </property>
    <property name="text">
     <string>Super Hard</string>
+   </property>
+  </action>
+  <action name="actionColor_Numbers">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Color Numbers</string>
    </property>
   </action>
  </widget>

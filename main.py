@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtWidgets import QMessageBox
 from rich import print
 
-from sudoku import Difficulties, check_solution, generate_board
+from sudoku import Difficulties, check_solution, generate_board, NumberColors
 
 
 # It's a QObject that emits a signal when it's done
@@ -63,7 +63,7 @@ class Window(QtWidgets.QMainWindow):
         self.show_solution: bool = False
         self.brushSize: int = 10
         self._clear_size: int = 40
-        self.brushColor = QtGui.QColor(QtCore.Qt.blue)
+        self.brushColor = QtGui.QColor(130,130,130)
         self.lastPoint = QtCore.QPoint()
         self.painter = QtGui.QPainter()
         self.pointer_type = 0
@@ -74,6 +74,7 @@ class Window(QtWidgets.QMainWindow):
         self.generateAction.setEnabled(False)
         self.clearAction.triggered.connect(self.clear)
         self.toggleSolutionAction.triggered.connect(self.toggle_solution)
+        self.actionColor_Numbers.triggered.connect(self.color_numbers)
 
         self.actionEasy.triggered.connect(
             partial(self.set_difficulty, Difficulties.easy, self.actionEasy)
@@ -134,8 +135,11 @@ class Window(QtWidgets.QMainWindow):
         self.imageDraw = QtGui.QImage(self.size(), QtGui.QImage.Format_ARGB32)
         self.imageDraw.fill(QtCore.Qt.transparent)
         self.painter = QtGui.QPainter(self.image)
-        self.painter.setFont(QFont("Calibri", 64))
+        self.show_solution = False
+        self.toggleSolutionAction.setText("Show Solution")
         self.load_board()
+        if self.actionColor_Numbers.isChecked():
+            self.color_numbers()
         self.update()
 
     def generate(self):
@@ -152,11 +156,12 @@ class Window(QtWidgets.QMainWindow):
         self.imageDraw = QtGui.QImage(self.size(), QtGui.QImage.Format_ARGB32)
         self.imageDraw.fill(QtCore.Qt.transparent)
         self.painter = QtGui.QPainter(self.image)
-        self.painter.setFont(QFont("Calibri", 64))
         generate_board(self.difficulty)
         self.load_board()
         self.update()
         self.image.save("screenshot.png", "png")
+        if self.actionColor_Numbers.isChecked():
+            self.color_numbers()
         self.solve(output_filename="solution.png")
 
     def load_cell_positions(self) -> None:
@@ -168,7 +173,7 @@ class Window(QtWidgets.QMainWindow):
         for row in range(9):
             self.cell_positions.append([])
             for col in range(9):
-                self.cell_positions[row].append((111 * (col), 111 * (row) + 20))
+                self.cell_positions[row].append((166 * (col), 166 * (row) + 20))
 
     def load_board(self) -> None:
         """
@@ -177,6 +182,7 @@ class Window(QtWidgets.QMainWindow):
         with open("board.txt", "r") as f:
             lines = f.readlines()
         lines = [line.replace("\n", "") for line in lines]
+        self.painter.setFont(QFont("Calibri", 100))
         for row, col in itertools.product(range(9), range(9)):
             line = lines[row]
             number = line[col]
@@ -197,12 +203,48 @@ class Window(QtWidgets.QMainWindow):
             self.painter.drawText(
                 self.cell_positions[row][col][0],
                 self.cell_positions[row][col][1],
-                111,
-                111,
+                166,
+                166,
                 Qt.AlignCenter,
                 number,
             )
+        self.update()
 
+    def color_numbers(self):
+        if self.actionColor_Numbers.isChecked():
+            with open("board.txt", "r") as f:
+                lines = f.readlines()
+            lines = [line.replace("\n", "") for line in lines]
+            for row, col in itertools.product(range(9), range(9)):
+                line = lines[row]
+                number = line[col]
+                color =NumberColors.number_colors[int(number)]
+                if number == "0":
+                    number = ""
+                self.painter.setRenderHint(QPainter.TextAntialiasing, True)
+                self.painter.setRenderHint(QPainter.HighQualityAntialiasing, True)
+                self.painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+                self.painter.setPen(
+                    QtGui.QPen(
+                        color,
+                        self.brushSize,
+                        QtCore.Qt.SolidLine,
+                        QtCore.Qt.RoundCap,
+                        QtCore.Qt.RoundJoin,
+                    )
+                )
+                self.painter.drawText(
+                    self.cell_positions[row][col][0],
+                    self.cell_positions[row][col][1],
+                    166,
+                    166,
+                    Qt.AlignCenter,
+                    number,
+                )
+            self.update()
+        else:
+            self.load_board()
+    
     def toggle_solution(self) -> None:
         """
         It toggles the solution on and off
@@ -213,17 +255,17 @@ class Window(QtWidgets.QMainWindow):
             self.toggleSolutionAction.setText("Hide Solution")
             self.image = QtGui.QImage("solution.png")
             self.painter = QtGui.QPainter(self.image)
+            self.painter.setFont(QFont("Calibri", 57))
         else:
             self.toggleSolutionAction.setText("Show Solution")
             self.image = QtGui.QImage("board.png")
             self.painter = QtGui.QPainter(self.image)
-            self.painter.setFont(QFont("Calibri", 64))
             self.load_board()
+            self.painter.setFont(QFont("Calibri", 100))
+        if self.actionColor_Numbers.isChecked():
+            self.color_numbers()
         self.update()
-        # QMessageBox.about(self, "Found", "Solution found")
-        # else:
-        # QMessageBox.about(self, "Wrong", "No solution")
-
+        
     def mousePressEvent(self, event):
         """
         If the pointer type is 1, then the drawing is set to True, erase is set to False, and the last
@@ -270,7 +312,6 @@ class Window(QtWidgets.QMainWindow):
         Args:
           event: The event object that contains the mouse position.
         """
-        print(self.pen_pressure)
         if event.buttons() and QtCore.Qt.LeftButton and self.drawing:
             self.painter = QtGui.QPainter(self.imageDraw)
             self.painter.setPen(
