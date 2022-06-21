@@ -2,17 +2,17 @@ import contextlib
 import itertools
 import sys
 from functools import partial
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont, QIcon, QImage, QPalette, QPixmap
-from PyQt5.QtWidgets import QMessageBox
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-from rich import print
-from PyQt5 import uic
-from sudoku import check_solution, generate_board
 
+from PyQt5 import QtCore, QtGui, QtWidgets, uic
+from PyQt5.QtCore import *
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import *
+from PyQt5.QtGui import QFont, QIcon, QImage, QPalette, QPixmap
+from PyQt5.QtWidgets import *
+from PyQt5.QtWidgets import QMessageBox
+from rich import print
+
+from sudoku import check_solution, generate_board
 
 
 class Worker(QObject):
@@ -25,11 +25,12 @@ class Worker(QObject):
     def run(self, output_filename):
         check_solution(output_filename)
         self.finished.emit()
-        
+
+
 class Window(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        uic.loadUi('main.ui', self)
+        uic.loadUi("main.ui", self)
         width, height = 1500, 1520
         self.setFixedSize(width, height)
         self.setWindowTitle("Sudoku")
@@ -44,14 +45,14 @@ class Window(QtWidgets.QMainWindow):
         self.painter = QtGui.QPainter()
         self.pointer_type = 0
         self.pen_pressure: float = 0.0
-        
+
         self.generateAction.triggered.connect(self.generate)
         self.clearAction.triggered.connect(self.clear)
         self.toggleSolutionAction.triggered.connect(self.toggle_solution)
 
         self.load_cell_positions()
         self.generate()
-        
+
     def solve(self, output_filename: str):
         self.thread = QThread()
         self.worker = Worker(output_filename=output_filename)
@@ -62,10 +63,10 @@ class Window(QtWidgets.QMainWindow):
         self.worker.finished.connect(self.found_solution)
         self.thread.finished.connect(self.thread.deleteLater)
         self.thread.start()
-        
+
     def found_solution(self):
         self.toggleSolutionAction.setEnabled(True)
-        
+
     def clear(self):
         with contextlib.suppress(Exception):
             self.painter.end()
@@ -76,7 +77,7 @@ class Window(QtWidgets.QMainWindow):
         self.painter.setFont(QFont("Calibri", 64))
         self.load_board()
         self.update()
-        
+
     def generate(self):
         self.toggleSolutionAction.setEnabled(False)
         with contextlib.suppress(Exception):
@@ -89,15 +90,15 @@ class Window(QtWidgets.QMainWindow):
         generate_board()
         self.load_board()
         self.update()
-        self.image.save('screenshot.png', 'png')
-        self.solve(output_filename='solution.png')
+        self.image.save("screenshot.png", "png")
+        self.solve(output_filename="solution.png")
 
     def load_cell_positions(self) -> None:
         self.cell_positions = []
         for row in range(9):
             self.cell_positions.append([])
             for col in range(9):
-                self.cell_positions[row].append((111 * (col), 111 * (row)+20))
+                self.cell_positions[row].append((111 * (col), 111 * (row) + 20))
 
     def load_board(self) -> None:
         with open("board.txt", "r") as f:
@@ -128,7 +129,7 @@ class Window(QtWidgets.QMainWindow):
                 Qt.AlignCenter,
                 number,
             )
-    
+
     def toggle_solution(self) -> None:
         self.show_solution = not self.show_solution
         self.painter.end()
@@ -143,9 +144,9 @@ class Window(QtWidgets.QMainWindow):
             self.painter.setFont(QFont("Calibri", 64))
             self.load_board()
         self.update()
-            # QMessageBox.about(self, "Found", "Solution found")
+        # QMessageBox.about(self, "Found", "Solution found")
         # else:
-            # QMessageBox.about(self, "Wrong", "No solution")
+        # QMessageBox.about(self, "Wrong", "No solution")
 
     def mousePressEvent(self, event):
         if self.pointer_type == 1:
@@ -168,14 +169,14 @@ class Window(QtWidgets.QMainWindow):
         self.pointer_type = tabletEvent.pointerType()
         self.pen_pressure = tabletEvent.pressure()
         tabletEvent.accept()
-        
+
     def mouseMoveEvent(self, event):
         if event.buttons() and QtCore.Qt.LeftButton and self.drawing:
             self.painter = QtGui.QPainter(self.imageDraw)
             self.painter.setPen(
                 QtGui.QPen(
                     self.brushColor,
-                    self.brushSize*self.pen_pressure,
+                    self.brushSize * self.pen_pressure,
                     QtCore.Qt.SolidLine,
                     QtCore.Qt.RoundCap,
                     QtCore.Qt.RoundJoin,
