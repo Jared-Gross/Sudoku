@@ -5,3 +5,11 @@ demos/
 *.pyc
 */highscore.txt
 *.ini
+dist/
+build/
+.vscode/
+*.spec
+*.txt
+*.png
+solution.png
+screenshot.png

@@ -143,6 +143,9 @@ class Window(QtWidgets.QMainWindow):
         It generates a new board, loads it, updates the board, and saves the board as a screenshot.
         """
         self.toggleSolutionAction.setEnabled(False)
+        self.generateAction.setEnabled(False)
+        self.toggleSolutionAction.setText("Show Solution")
+        self.show_solution = False
         with contextlib.suppress(Exception):
             self.painter.end()
         self.image = QtGui.QImage("board.png")
@@ -231,12 +234,12 @@ class Window(QtWidgets.QMainWindow):
         Args:
           event: The event that triggered the mousePressEvent
         """
-        if self.pointer_type == 1 or event.button() == QtCore.Qt.LeftButton:
+        if self.pointer_type == 1:
             self.drawing = True
             self.erase = False
             self.lastPoint = event.pos()
             QtWidgets.QApplication.restoreOverrideCursor()
-        elif self.pointer_type == 3 or event.button() == QtCore.Qt.RightButton:
+        elif self.pointer_type == 3:
             self.erase = True
             pixmap = QtGui.QPixmap(QtCore.QSize(1, 1) * self._clear_size)
             pixmap.fill(QtCore.Qt.transparent)

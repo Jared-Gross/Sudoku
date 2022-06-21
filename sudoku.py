@@ -382,7 +382,7 @@ def image_to_num(c2):
     """
     img = 255 - c2
     pytesseract.pytesseract.tesseract_cmd = (
-        r"C:/Program Files/Tesseract-OCR/tesseract.exe"
+        r"C:/Program Files (x86)/Tesseract-OCR/tesseract.exe"
     )
 
     text = pytesseract.image_to_string(
